@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Password Vault Pro</title>
+<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0f1e;
+    --bg-dark: #0f172a;
+    --bg-card: #1e293b;
+    --blue: #3b82f6;
+    --indigo: #6366f1;
+    --violet: #8b5cf6;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --border: rgba(255,255,255,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-deep);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  /* Animated background */
+  .bg-mesh {
+    position: fixed; inset: 0; z-index: 0;
+    background: 
+      radial-gradient(ellipse 80% 50% at 20% 30%, rgba(99,102,241,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 60% at 80% 70%, rgba(139,92,246,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 50% 10%, rgba(59,130,246,0.1) 0%, transparent 60%);
+    animation: meshMove 12s ease-in-out infinite alternate;
+  }
+  @keyframes meshMove {
+    0% { transform: scale(1) rotate(0deg); }
+    100% { transform: scale(1.05) rotate(1deg); }
+  }
+  
+  /* Floating orbs */
+  .orb {
+    position: fixed; border-radius: 50%;
+    filter: blur(80px); opacity: 0.4; pointer-events: none;
+    animation: orbFloat 8s ease-in-out infinite alternate;
+  }
+  .orb-1 { width: 400px; height: 400px; background: var(--indigo); top: -100px; left: -100px; animation-delay: 0s; }
+  .orb-2 { width: 300px; height: 300px; background: var(--violet); bottom: -80px; right: -80px; animation-delay: 2s; }
+  .orb-3 { width: 200px; height: 200px; background: var(--blue); top: 50%; left: 60%; animation-delay: 4s; }
+  @keyframes orbFloat {
+    0% { transform: translate(0,0) scale(1); }
+    100% { transform: translate(20px, 30px) scale(1.1); }
+  }
+  
+  /* Grid overlay */
+  .grid-overlay {
+    position: fixed; inset: 0; z-index: 0; opacity: 0.04;
+    background-image: linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  .auth-container {
+    position: relative; z-index: 10;
+    width: 100%; max-width: 440px; padding: 2rem;
+  }
+  
+  .logo-area {
+    text-align: center; margin-bottom: 2.5rem;
+    animation: fadeDown 0.6s ease both;
+  }
+  
+  .logo-icon {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, var(--indigo), var(--violet));
+    border-radius: 20px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 2rem; margin-bottom: 1rem;
+    box-shadow: 0 0 40px rgba(139,92,246,0.4), 0 0 80px rgba(99,102,241,0.2);
+    position: relative;
+  }
+  .logo-icon::after {
+    content: '';
+    position: absolute; inset: -2px; border-radius: 22px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.5), rgba(139,92,246,0.5));
+    z-index: -1; filter: blur(8px);
+  }
+  
+  .logo-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.75rem; font-weight: 800;
+    background: linear-gradient(135deg, #fff, rgba(139,92,246,0.9));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+  .logo-sub {
+    font-size: 0.85rem; color: var(--text-muted);
+    margin-top: 0.25rem; letter-spacing: 0.5px;
+  }
+  
+  .card-glass {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.25rem;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+  
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.2rem; font-weight: 700;
+    color: #fff; margin-bottom: 0.5rem;
+  }
+  .card-desc { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.75rem; }
+
+  .form-label {
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .input-group-custom {
+    position: relative;
+  }
+  .input-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); z-index: 2; font-size: 0.9rem;
+  }
+  .form-control-custom {
+    width: 100%;
+    background: rgba(15,23,42,0.8);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    padding: 0.75rem 0.875rem 0.75rem 2.75rem;
+    font-size: 0.95rem;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+    outline: none;
+  }
+  .form-control-custom:focus {
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    background: rgba(15,23,42,0.95);
+  }
+  .form-control-custom::placeholder { color: #334155; }
+  
+  .toggle-pwd {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; padding: 4px; z-index: 2;
+    transition: color 0.2s;
+  }
+  .toggle-pwd:hover { color: var(--text); }
+  
+  .strength-bar {
+    height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1);
+    margin-top: 8px; overflow: hidden;
+  }
+  .strength-fill {
+    height: 100%; border-radius: 2px; transition: all 0.3s;
+    width: 0%;
+  }
+  .strength-text { font-size: 0.75rem; margin-top: 4px; }
+  
+  .btn-primary-custom {
+    width: 100%;
+    background: linear-gradient(135deg, var(--indigo), var(--violet));
+    border: none; border-radius: 12px;
+    color: #fff; font-weight: 600; font-size: 0.95rem;
+    padding: 0.875rem;
+    cursor: pointer; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    position: relative; overflow: hidden;
+    letter-spacing: 0.2px;
+  }
+  .btn-primary-custom::before {
+    content: '';
+    position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s;
+  }
+  .btn-primary-custom:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(139,92,246,0.4); }
+  .btn-primary-custom:hover::before { left: 100%; }
+  .btn-primary-custom:active { transform: translateY(0); }
+  
+  .timeout-grid {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 8px;
+  }
+  .timeout-btn {
+    background: rgba(15,23,42,0.8); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text-muted);
+    padding: 8px 4px; font-size: 0.8rem; cursor: pointer;
+    transition: all 0.2s; text-align: center;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .timeout-btn.active {
+    border-color: var(--indigo); color: var(--indigo);
+    background: rgba(99,102,241,0.1);
+  }
+  
+  .error-msg {
+    background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 10px; padding: 10px 14px;
+    font-size: 0.85rem; color: #fca5a5;
+    display: none; margin-top: 12px;
+  }
+  .error-msg.show { display: flex; align-items: center; gap: 8px; }
+  
+  .security-note {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px; padding: 10px 14px; margin-top: 1.25rem;
+    font-size: 0.8rem; color: #93c5fd;
+  }
+  
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .loading-spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div class="grid-overlay"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="auth-container">
+  <div class="logo-area">
+    <div class="logo-icon">🔐</div>
+    <div class="logo-title">Password Vault Pro</div>
+    <div class="logo-sub">Local · Encrypted · Private</div>
+  </div>
+  
+  <div class="card-glass">
+    {% if not setup_done %}
+    <!-- Setup Form -->
+    <div class="card-title">Create Master Password</div>
+    <div class="card-desc">This password encrypts all your data. It cannot be recovered if lost.</div>
+    
+    <div class="mb-3">
+      <label class="form-label">Master Password</label>
+      <div class="input-group-custom">
+        <i class="fas fa-lock input-icon"></i>
+        <input type="password" id="setupPwd" class="form-control-custom" placeholder="At least 8 characters..." autocomplete="new-password">
+        <button class="toggle-pwd" onclick="togglePwd('setupPwd', this)"><i class="fas fa-eye"></i></button>
+      </div>
+      <div class="strength-bar"><div class="strength-fill" id="setupStrengthFill"></div></div>
+      <div class="strength-text" id="setupStrengthText" style="color: var(--text-muted)"></div>
+    </div>
+    
+    <div class="mb-4">
+      <label class="form-label">Confirm Password</label>
+      <div class="input-group-custom">
+        <i class="fas fa-lock input-icon"></i>
+        <input type="password" id="setupConfirm" class="form-control-custom" placeholder="Repeat password..." autocomplete="new-password">
+        <button class="toggle-pwd" onclick="togglePwd('setupConfirm', this)"><i class="fas fa-eye"></i></button>
+      </div>
+    </div>
+    
+    <button class="btn-primary-custom" onclick="doSetup()" id="setupBtn">
+      <i class="fas fa-vault me-2"></i>Create Vault
+    </button>
+    
+    {% else %}
+    <!-- Login Form -->
+    <div class="card-title">Welcome Back</div>
+    <div class="card-desc">Enter your master password to unlock the vault.</div>
+    
+    <div class="mb-3">
+      <label class="form-label">Master Password</label>
+      <div class="input-group-custom">
+        <i class="fas fa-lock input-icon"></i>
+        <input type="password" id="loginPwd" class="form-control-custom" placeholder="Your master password..." autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="toggle-pwd" onclick="togglePwd('loginPwd', this)"><i class="fas fa-eye"></i></button>
+      </div>
+    </div>
+    
+    <div class="mb-4">
+      <label class="form-label">Auto-Lock After</label>
+      <div class="timeout-grid">
+        <button class="timeout-btn" onclick="selectTimeout(5, this)">5 min</button>
+        <button class="timeout-btn active" onclick="selectTimeout(15, this)">15 min</button>
+        <button class="timeout-btn" onclick="selectTimeout(30, this)">30 min</button>
+        <button class="timeout-btn" onclick="selectTimeout(60, this)">60 min</button>
+      </div>
+    </div>
+    
+    <button class="btn-primary-custom" onclick="doLogin()" id="loginBtn">
+      <i class="fas fa-unlock me-2"></i>Unlock Vault
+    </button>
+    {% endif %}
+    
+    <div class="error-msg" id="errorMsg">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span id="errorText"></span>
+    </div>
+    
+    <div class="security-note">
+      <i class="fas fa-shield-halved"></i>
+      <span>All data is encrypted locally. Nothing leaves your device.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedTimeout = 15;
+
+function togglePwd(id, btn) {
+  const inp = document.getElementById(id);
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+  } else {
+    inp.type = 'password';
+    btn.innerHTML = '<i class="fas fa-eye"></i>';
+  }
+}
+
+function selectTimeout(val, btn) {
+  selectedTimeout = val;
+  document.querySelectorAll('.timeout-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+const pwd = document.getElementById('setupPwd');
+if (pwd) {
+  pwd.addEventListener('input', function() {
+    const val = this.value;
+    if (!val) { document.getElementById('setupStrengthText').textContent = ''; return; }
+    
+    fetch('/api/check-strength', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: val})
+    }).then(r => r.json()).then(data => {
+      const colors = {weak:'#ef4444', fair:'#f59e0b', good:'#10b981', strong:'#3b82f6'};
+      const labels = {weak:'Weak', fair:'Fair', good:'Good', strong:'Strong'};
+      const fill = document.getElementById('setupStrengthFill');
+      fill.style.width = data.percentage + '%';
+      fill.style.background = colors[data.strength] || '#64748b';
+      const txt = document.getElementById('setupStrengthText');
+      txt.textContent = labels[data.strength] || '';
+      txt.style.color = colors[data.strength] || '#64748b';
+    }).catch(() => {});
+  });
+}
+
+function showError(msg) {
+  document.getElementById('errorText').textContent = msg;
+  document.getElementById('errorMsg').classList.add('show');
+}
+function hideError() {
+  document.getElementById('errorMsg').classList.remove('show');
+}
+
+async function doSetup() {
+  hideError();
+  const p1 = document.getElementById('setupPwd').value;
+  const p2 = document.getElementById('setupConfirm').value;
+  if (!p1) { showError('Password is required'); return; }
+  if (p1 !== p2) { showError('Passwords do not match'); return; }
+  
+  const btn = document.getElementById('setupBtn');
+  btn.innerHTML = '<span class="loading-spinner"></span>';
+  btn.disabled = true;
+  
+  try {
+    const r = await fetch('/api/setup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: p1})
+    });
+    const d = await r.json();
+    if (d.success) {
+      window.location.href = '/vault';
+    } else {
+      showError(d.error || 'Setup failed');
+      btn.innerHTML = '<i class="fas fa-vault me-2"></i>Create Vault';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showError('Connection error');
+    btn.innerHTML = '<i class="fas fa-vault me-2"></i>Create Vault';
+    btn.disabled = false;
+  }
+}
+
+async function doLogin() {
+  hideError();
+  const pwd = document.getElementById('loginPwd')?.value;
+  if (!pwd) { showError('Enter your master password'); return; }
+  
+  const btn = document.getElementById('loginBtn');
+  btn.innerHTML = '<span class="loading-spinner"></span>';
+  btn.disabled = true;
+  
+  try {
+    const r = await fetch('/api/unlock', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pwd, timeout: selectedTimeout})
+    });
+    const d = await r.json();
+    if (d.success) {
+      window.location.href = '/vault';
+    } else {
+      showError(d.error || 'Wrong password');
+      document.getElementById('loginPwd').value = '';
+      btn.innerHTML = '<i class="fas fa-unlock me-2"></i>Unlock Vault';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showError('Connection error');
+    btn.innerHTML = '<i class="fas fa-unlock me-2"></i>Unlock Vault';
+    btn.disabled = false;
+  }
+}
+
+// Also check strength on unlock page for new-password input
+const setupPwdEl = document.getElementById('setupPwd');
+if (setupPwdEl) {
+  // it was already set up above
+} else {
+  // Prevent form submit on enter for login
+}
+</script>
+</body>
+</html>

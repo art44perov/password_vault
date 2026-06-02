@@ -1,0 +1,6 @@
+flask==3.0.3
+flask-sqlalchemy==3.1.1
+sqlalchemy==2.0.31
+cryptography==42.0.8
+argon2-cffi==23.1.0
+pyperclip==1.9.0
