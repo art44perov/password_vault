@@ -4,3 +4,5 @@ sqlalchemy==2.0.31
 cryptography==42.0.8
 argon2-cffi==23.1.0
 pyperclip==1.9.0
+pywebview==5.4
+waitress==3.0.2

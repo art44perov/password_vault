@@ -1,7 +1,10 @@
 import os
 import sys
+import socket
 import threading
+import subprocess
 import webbrowser
+import time
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, Response
 from models import db, VaultConfig, VaultEntry
@@ -14,13 +17,33 @@ import json
 import base64
 import io
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+def _is_frozen():
+    return getattr(sys, 'frozen', False)
+
+def resource_dir():
+    """Bundled files (templates, static) live here."""
+    if _is_frozen():
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+def app_dir():
+    """Writable files (database, backups) live next to the exe or script."""
+    if _is_frozen():
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+BASE_DIR = app_dir()
+RESOURCE_DIR = resource_dir()
 DB_DIR = os.path.join(BASE_DIR, 'database')
 BACKUP_DIR = os.path.join(BASE_DIR, 'backups')
 os.makedirs(DB_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=os.path.join(RESOURCE_DIR, 'templates'),
+    static_folder=os.path.join(RESOURCE_DIR, 'static'),
+)
 app.config['SECRET_KEY'] = os.urandom(32)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(DB_DIR, "vault.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -483,6 +506,9 @@ def check_duplicates():
 def session_status():
     return jsonify({'authenticated': is_authenticated()})
 
+APP_TITLE = 'Password Vault Pro'
+PREFERRED_PORT = 8000
+
 def add_to_startup():
     """Add app to Windows startup"""
     try:
@@ -492,20 +518,174 @@ def add_to_startup():
             r"Software\Microsoft\Windows\CurrentVersion\Run",
             0, winreg.KEY_SET_VALUE
         )
-        python_path = sys.executable
-        script_path = os.path.abspath(__file__)
-        winreg.SetValueEx(key, "PasswordVaultPro", 0, winreg.REG_SZ,
-                          f'"{python_path}" "{script_path}"')
+        if _is_frozen():
+            command = f'"{sys.executable}"'
+        else:
+            command = f'"{sys.executable}" "{os.path.abspath(__file__)}"'
+        winreg.SetValueEx(key, "PasswordVaultPro", 0, winreg.REG_SZ, command)
         winreg.CloseKey(key)
     except:
         pass  # Not on Windows or no permission
 
-def open_browser():
-    import time
-    time.sleep(1.5)
-    webbrowser.open('http://localhost:8000')
+def _log_path():
+    return os.path.join(app_dir(), 'vault.log')
+
+def _append_log(message):
+    try:
+        with open(_log_path(), 'a', encoding='utf-8') as f:
+            f.write(message.rstrip() + '\n')
+    except Exception:
+        pass
+
+def show_error(message):
+    _append_log(message)
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, message, APP_TITLE, 0x10)
+    except Exception:
+        pass
+
+def find_free_port(preferred=PREFERRED_PORT):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind(('127.0.0.1', preferred))
+            return preferred
+        except OSError:
+            pass
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('127.0.0.1', 0))
+        return s.getsockname()[1]
+
+def wait_for_server(url, timeout=20):
+    import urllib.request
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            urllib.request.urlopen(url, timeout=0.4)
+            return True
+        except Exception:
+            time.sleep(0.12)
+    return False
+
+def start_server(host, port):
+    try:
+        from waitress import serve
+        serve(app, host=host, port=port, threads=8, ident='PasswordVaultPro')
+    except Exception:
+        app.run(host=host, port=port, debug=False, use_reloader=False, threaded=True)
+
+def open_webview(url):
+    """Native desktop window (WebView2 on Windows, Cocoa on macOS, GTK on Linux)."""
+    import webview
+
+    gui = None
+    if sys.platform.startswith('win'):
+        gui = 'edgechromium'
+    elif sys.platform == 'darwin':
+        gui = 'cocoa'
+    else:
+        import gi
+        gi.require_version('Gtk', '3.0')
+        try:
+            gi.require_version('WebKit2', '4.1')
+        except ValueError:
+            gi.require_version('WebKit2', '4.0')
+        gui = 'gtk'
+
+    webview.create_window(
+        APP_TITLE,
+        url,
+        width=1280,
+        height=860,
+        min_size=(900, 600),
+        text_select=True,
+        confirm_close=False,
+        background_color='#0f172a',
+    )
+    webview.start(gui=gui)
+
+def _browser_candidates():
+    env = os.environ
+    local = env.get('LOCALAPPDATA', '')
+    pf = env.get('PROGRAMFILES', r'C:\Program Files')
+    pf86 = env.get('PROGRAMFILES(X86)', r'C:\Program Files (x86)')
+    names = [
+        os.path.join(pf86, r'Microsoft\Edge\Application\msedge.exe'),
+        os.path.join(pf, r'Microsoft\Edge\Application\msedge.exe'),
+        os.path.join(local, r'Microsoft\Edge\Application\msedge.exe'),
+        os.path.join(pf, r'Google\Chrome\Application\chrome.exe'),
+        os.path.join(local, r'Google\Chrome\Application\chrome.exe'),
+        os.path.join(pf86, r'Google\Chrome\Application\chrome.exe'),
+        'msedge',
+        'chrome',
+        'google-chrome-stable',
+        'google-chrome',
+        'chromium',
+        'chromium-browser',
+        'microsoft-edge',
+    ]
+    from shutil import which
+    found = []
+    for item in names:
+        if os.path.sep in item or (len(item) > 1 and item[1] == ':'):
+            if os.path.isfile(item):
+                found.append(item)
+        else:
+            path = which(item)
+            if path:
+                found.append(path)
+    return found
+
+def open_chrome_app(url):
+    """Tabless Chrome/Edge window — fallback if native webview is unavailable."""
+    browsers = _browser_candidates()
+    if not browsers:
+        return False
+    profile = os.path.join(app_dir(), '.vault-ui')
+    os.makedirs(profile, exist_ok=True)
+    args = [
+        browsers[0],
+        f'--app={url}',
+        '--window-size=1280,860',
+        f'--user-data-dir={profile}',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-extensions',
+        '--disable-sync',
+        '--disable-features=Translate',
+        '--class=PasswordVaultPro',
+    ]
+    proc = subprocess.Popen(args)
+    proc.wait()
+    return True
+
+def run_desktop():
+    add_to_startup()
+    host = '127.0.0.1'
+    port = find_free_port()
+    url = f'http://{host}:{port}'
+
+    server = threading.Thread(target=start_server, args=(host, port), daemon=True)
+    server.start()
+    if not wait_for_server(url):
+        show_error('Не удалось запустить локальный сервер Password Vault Pro.')
+        sys.exit(1)
+
+    try:
+        open_webview(url)
+        return
+    except Exception as exc:
+        _append_log(f'webview failed: {exc}')
+
+    try:
+        if open_chrome_app(url):
+            return
+    except Exception as exc:
+        _append_log(f'chrome app failed: {exc}')
+
+    webbrowser.open(url)
+    server.join()
 
 if __name__ == '__main__':
-    add_to_startup()
-    threading.Thread(target=open_browser, daemon=True).start()
-    app.run(host='127.0.0.1', port=8000, debug=False, use_reloader=False)
+    run_desktop()

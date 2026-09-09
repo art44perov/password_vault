@@ -1,0 +1,13 @@
+.venv/
+.venv-build/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+dist/
+build/
+*.spec.bak
+database/
+backups/
+.vault-ui/
+vault.log
