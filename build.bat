@@ -1,66 +1,29 @@
 @echo off
-chcp 65001 >nul
 setlocal EnableExtensions
 cd /d "%~dp0"
 
-echo ============================================
-echo  Password Vault Pro — сборка десктопного exe
-echo ============================================
-echo.
-
+set PY=
 where python >nul 2>&1
-if errorlevel 1 (
-    echo [Ошибка] Python не найден.
-    echo Установите Python 3.11+ с https://www.python.org/downloads/
-    echo При установке отметьте "Add python.exe to PATH".
+if not errorlevel 1 set PY=python
+if not defined PY (
+    where py >nul 2>&1
+    if not errorlevel 1 set PY=py -3
+)
+if not defined PY (
+    echo [ERROR] Python not found.
+    echo Install Python 3.11+ from https://www.python.org/downloads/
+    echo Enable "Add python.exe to PATH" during setup.
     pause
     exit /b 1
 )
 
-echo [1/4] Создание виртуального окружения...
-if not exist ".venv-build\Scripts\python.exe" (
-    python -m venv .venv-build
-    if errorlevel 1 (
-        echo [Ошибка] Не удалось создать venv.
-        pause
-        exit /b 1
-    )
+echo Building Password Vault Pro...
+%PY% build.py
+set ERR=%ERRORLEVEL%
+if not "%ERR%"=="0" (
+    echo.
+    echo [ERROR] Build failed with code %ERR%.
 )
-
-call ".venv-build\Scripts\activate.bat"
-
-echo [2/4] Установка зависимостей...
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt pyinstaller
-if errorlevel 1 (
-    echo [Ошибка] pip install не удался.
-    pause
-    exit /b 1
-)
-
-echo [3/4] Сборка десктопного exe через PyInstaller...
-if exist build rmdir /s /q build
-if exist dist rmdir /s /q dist
-python -m PyInstaller --noconfirm --clean PasswordVaultPro.spec
-if errorlevel 1 (
-    echo [Ошибка] PyInstaller не смог собрать exe.
-    pause
-    exit /b 1
-)
-
-echo [4/4] Готово.
 echo.
-echo Файл: dist\PasswordVaultPro.exe
-echo Это отдельное окно приложения, не вкладка браузера.
-echo Рядом с exe появятся папки database\ и backups\ при первом запуске.
-echo.
-
-if exist "dist\PasswordVaultPro.exe" (
-    explorer dist
-) else (
-    echo [Ошибка] dist\PasswordVaultPro.exe не найден.
-    pause
-    exit /b 1
-)
-
 pause
+exit /b %ERR%
