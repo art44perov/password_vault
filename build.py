@@ -35,21 +35,32 @@ def main():
     print(flush=True)
 
     print("[1/4] Virtual environment...", flush=True)
-    if not VENV_PY.is_file():
-        run([sys.executable, "-m", "venv", str(VENV)])
+    py = str(VENV_PY) if VENV_PY.is_file() else None
+    if py is None:
+        created = subprocess.run(
+            [sys.executable, "-m", "venv", str(VENV)],
+            cwd=ROOT,
+        )
+        if created.returncode == 0 and VENV_PY.is_file():
+            py = str(VENV_PY)
+        else:
+            print("[WARN] venv is unavailable, using current Python", flush=True)
+            if VENV.exists():
+                shutil.rmtree(VENV, ignore_errors=True)
+            py = sys.executable
     else:
-        print(f"Using {VENV_PY}", flush=True)
+        print(f"Using {py}", flush=True)
 
     print("[2/4] Installing dependencies...", flush=True)
-    run([str(VENV_PY), "-m", "pip", "install", "--upgrade", "pip"])
-    run([str(VENV_PY), "-m", "pip", "install", "-r", "requirements.txt", "pyinstaller"])
+    run([py, "-m", "pip", "install", "--upgrade", "pip"])
+    run([py, "-m", "pip", "install", "-r", "requirements.txt", "pyinstaller"])
 
     print("[3/4] Running PyInstaller...", flush=True)
     for name in ("build", "dist"):
         path = ROOT / name
         if path.exists():
             shutil.rmtree(path)
-    run([str(VENV_PY), "-m", "PyInstaller", "--noconfirm", "--clean", str(SPEC)])
+    run([py, "-m", "PyInstaller", "--noconfirm", "--clean", str(SPEC)])
 
     exe = ROOT / "dist" / "PasswordVaultPro.exe"
     other = ROOT / "dist" / "PasswordVaultPro"
