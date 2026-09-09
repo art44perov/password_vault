@@ -9,3 +9,5 @@ build/
 *.spec.bak
 database/
 backups/
+.vault-ui/
+vault.log

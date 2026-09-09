@@ -4,7 +4,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo ============================================
-echo  Password Vault Pro — сборка Windows exe
+echo  Password Vault Pro — сборка десктопного exe
 echo ============================================
 echo.
 
@@ -38,7 +38,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [3/4] Сборка exe через PyInstaller...
+echo [3/4] Сборка десктопного exe через PyInstaller...
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 python -m PyInstaller --noconfirm --clean PasswordVaultPro.spec
@@ -51,6 +51,7 @@ if errorlevel 1 (
 echo [4/4] Готово.
 echo.
 echo Файл: dist\PasswordVaultPro.exe
+echo Это отдельное окно приложения, не вкладка браузера.
 echo Рядом с exe появятся папки database\ и backups\ при первом запуске.
 echo.
 

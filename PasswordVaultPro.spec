@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for Password Vault Pro Windows exe."""
+"""PyInstaller spec for Password Vault Pro desktop exe."""
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
@@ -18,13 +18,18 @@ hiddenimports = collect_submodules('sqlalchemy') + [
     'cryptography.hazmat.primitives.kdf.pbkdf2',
     'argon2',
     'argon2.exceptions',
+    'waitress',
+    'webview',
+    'webview.platforms.edgechromium',
+    'webview.platforms.winforms',
+    'webview.platforms.mshtml',
     'models',
     'crypto',
     'auth',
     'backup',
 ]
 
-for pkg in ('cryptography', 'argon2'):
+for pkg in ('cryptography', 'argon2', 'webview'):
     pkg_datas, pkg_binaries, pkg_hidden = collect_all(pkg)
     datas += pkg_datas
     binaries += pkg_binaries
@@ -55,13 +60,14 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='static/icons/icon.ico',
 )
