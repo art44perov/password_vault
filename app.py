@@ -14,13 +14,33 @@ import json
 import base64
 import io
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+def _is_frozen():
+    return getattr(sys, 'frozen', False)
+
+def resource_dir():
+    """Bundled files (templates, static) live here."""
+    if _is_frozen():
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+def app_dir():
+    """Writable files (database, backups) live next to the exe or script."""
+    if _is_frozen():
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+BASE_DIR = app_dir()
+RESOURCE_DIR = resource_dir()
 DB_DIR = os.path.join(BASE_DIR, 'database')
 BACKUP_DIR = os.path.join(BASE_DIR, 'backups')
 os.makedirs(DB_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=os.path.join(RESOURCE_DIR, 'templates'),
+    static_folder=os.path.join(RESOURCE_DIR, 'static'),
+)
 app.config['SECRET_KEY'] = os.urandom(32)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(DB_DIR, "vault.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -492,10 +512,11 @@ def add_to_startup():
             r"Software\Microsoft\Windows\CurrentVersion\Run",
             0, winreg.KEY_SET_VALUE
         )
-        python_path = sys.executable
-        script_path = os.path.abspath(__file__)
-        winreg.SetValueEx(key, "PasswordVaultPro", 0, winreg.REG_SZ,
-                          f'"{python_path}" "{script_path}"')
+        if _is_frozen():
+            command = f'"{sys.executable}"'
+        else:
+            command = f'"{sys.executable}" "{os.path.abspath(__file__)}"'
+        winreg.SetValueEx(key, "PasswordVaultPro", 0, winreg.REG_SZ, command)
         winreg.CloseKey(key)
     except:
         pass  # Not on Windows or no permission
